@@ -9,4 +9,4 @@ Script này giúp bạn **cài lại toàn bộ môi trường dev chỉ với 1
 Mở **PowerShell (Run as Administrator)** và chạy:
 
 ```powershell
-irm https://raw.githubusercontent.com/duykhongphai/SetupWin/setup.ps1 | iex
+irm https://raw.githubusercontent.com/duykhongphai/SetupWin/main/setup.ps1 | iex
