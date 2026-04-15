@@ -4,7 +4,7 @@
 
 $ErrorActionPreference = "SilentlyContinue"
 
-$appsFile = "apps-clean.json"
+$appsFile = "apps.json"
 $logFile = "install.log"
 
 function Log($msg) {
