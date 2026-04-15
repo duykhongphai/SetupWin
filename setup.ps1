@@ -4,9 +4,11 @@
 
 $ErrorActionPreference = "SilentlyContinue"
 
+# ===== DOWNLOAD apps.json =====
 $appsFile = "$env:TEMP\apps.json"
 $appsUrl = "https://raw.githubusercontent.com/duykhongphai/SetupWin/main/apps.json"
 
+Log "Downloading apps.json..."
 Invoke-WebRequest $appsUrl -OutFile $appsFile
 
 $logFile = "install.log"
