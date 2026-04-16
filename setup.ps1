@@ -1,30 +1,44 @@
 # ======================================
-#     WINDOWS AUTO SETUP (PRO)
+#     WINDOWS AUTO SETUP (STABLE)
 # ======================================
 
-$ErrorActionPreference = "SilentlyContinue"
+$ErrorActionPreference = "Continue"
+
+$logFile = "$PSScriptRoot\install.log"
+
+function Log($msg) {
+    $time = Get-Date -Format "HH:mm:ss"
+    $line = "[$time] $msg"
+    Write-Host $line
+    Add-Content -Path $logFile -Value $line
+}
 
 # ===== DOWNLOAD apps.json =====
 $appsFile = "$env:TEMP\apps.json"
 $appsUrl = "https://raw.githubusercontent.com/duykhongphai/SetupWin/main/apps.json"
 
 Log "Downloading apps.json..."
-Invoke-WebRequest $appsUrl -OutFile $appsFile
-
-$logFile = "install.log"
-
-function Log($msg) {
-    Write-Host $msg
-    Add-Content -Path $logFile -Value $msg
+try {
+    Invoke-WebRequest $appsUrl -OutFile $appsFile -UseBasicParsing
+} catch {
+    Log "❌ Failed to download apps.json"
 }
 
-function Install-IfNotExists($id) {
-    $installed = winget list --id $id | Out-String
-    if ($installed -notmatch $id) {
-        Log "Installing $id ..."
-        winget install --id $id -e --accept-package-agreements --accept-source-agreements
+# ===== SAFE INSTALL (KHÔNG CHECK NỮA) =====
+function Install-App($id) {
+    Log "Installing $id ..."
+
+    winget install --id $id -e `
+        --accept-package-agreements `
+        --accept-source-agreements `
+        --silent `
+        --disable-interactivity `
+        --force
+
+    if ($LASTEXITCODE -eq 0) {
+        Log "✅ $id done"
     } else {
-        Log "$id already installed, skipping..."
+        Log "⚠️ $id may failed or already installed"
     }
 }
 
@@ -40,27 +54,33 @@ function Open-Download($name, $url) {
 # ===== CHECK WINGET =====
 Log "=== CHECK WINGET ==="
 if (!(Get-Command winget -ErrorAction SilentlyContinue)) {
-    Log "❌ Winget chưa có. Hãy cài 'App Installer' từ Microsoft Store."
+    Log "❌ Winget chưa có. Cài 'App Installer' từ Microsoft Store."
     exit
 }
 
 # ===== IMPORT JSON =====
-Log "=== IMPORT FROM $appsFile ==="
-winget import -i $appsFile --accept-package-agreements --accept-source-agreements
+Log "=== IMPORT APPS ==="
+try {
+    winget import -i $appsFile `
+        --accept-package-agreements `
+        --accept-source-agreements
+} catch {
+    Log "⚠️ Import lỗi (có thể do package không tồn tại)"
+}
 
 # ===== CORE TOOLS =====
 Log "=== INSTALL CORE TOOLS ==="
-Install-IfNotExists "Git.Git"
-Install-IfNotExists "Microsoft.VisualStudioCode"
-Install-IfNotExists "Notepad++.Notepad++"
-Install-IfNotExists "7zip.7zip"
+Install-App "Git.Git"
+Install-App "Microsoft.VisualStudioCode"
+Install-App "Notepad++.Notepad++"
+Install-App "7zip.7zip"
 
 # ===== OPTIONAL =====
-Log "=== TRY INSTALL OPTIONAL ==="
-Install-IfNotExists "Discord.Discord"
-Install-IfNotExists "RARLab.WinRAR"
-Install-IfNotExists "voidtools.Everything"
-Install-IfNotExists "BlueStack.BlueStacks"
+Log "=== OPTIONAL ==="
+Install-App "Discord.Discord"
+Install-App "RARLab.WinRAR"
+Install-App "voidtools.Everything"
+Install-App "BlueStack.BlueStacks"
 
 # ===== MANUAL =====
 Log "=== MANUAL INSTALL REQUIRED ==="
@@ -68,7 +88,7 @@ Log "=== MANUAL INSTALL REQUIRED ==="
 Open-Download "IDA Professional 9.2" "https://www.hex-rays.com/"
 Open-Download "GlassFish Server" "https://glassfish.org/"
 Open-Download "JDK 8u321" "https://www.oracle.com/java/technologies/javase/javase8-archive-downloads.html"
-Open-Download "Visual Studio Installer" "https://visualstudio.microsoft.com/"
+Open-Download "Visual Studio" "https://visualstudio.microsoft.com/"
 Open-Download "NetBeans 8.2" "https://archive.apache.org/dist/netbeans/"
 Open-Download "Java Wireless Toolkit" "https://www.oracle.com/java/technologies/"
 Open-Download "Cốc Cốc" "https://coccoc.com/"
