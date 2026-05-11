@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32-CAM + PIR + 3 Cặp LED IR (V3 Ultimate)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;600;800&display=swap');
+  :root {
+    --bg: #050810;
+    --panel: #0a101d;
+    --border: #1a2a44;
+    --accent: #00e5ff;
+    --green: #00ff9d;
+    --yellow: #ffd600;
+    --red: #ff4757;
+    --purple: #b33dff;
+    --orange: #ff8c00;
+    --dim: #4a6080;
+    --text: #c8dff0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--accent);
+    padding: 18px 10px 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-shadow: 0 0 15px #00e5ff55;
+  }
+  .subtitle { text-align: center; color: var(--green); font-size: .85rem; margin-bottom: 14px; font-family: 'Share Tech Mono'; font-weight: 600;}
+  .tabs {
+    display: flex; justify-content: center; gap: 8px;
+    margin-bottom: 16px; flex-wrap: wrap; padding: 0 10px;
+  }
+  .tab {
+    padding: 7px 18px; border-radius: 20px; cursor: pointer;
+    font-family: 'Share Tech Mono'; font-size: .85rem; letter-spacing: 1px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--dim);
+    transition: all .2s;
+  }
+  .tab.active { border-color: var(--accent); color: var(--bg); background: var(--accent); font-weight: bold; box-shadow: 0 0 15px #00e5ff44; }
+  .tab:hover:not(.active) { color: var(--text); border-color: var(--accent); }
+  .section { display: none; padding: 0 12px 30px; }
+  .section.active { display: block; }
+
+  /* ---- DIAGRAM ---- */
+  .diagram-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 15px; overflow-x: auto; box-shadow: 0 8px 32px #00000055;}
+  svg text { font-family: 'Share Tech Mono', monospace; }
+
+  /* ---- TABLE ---- */
+  .table-section h2 { color: var(--accent); font-size: 1.1rem; margin: 20px 0 10px; letter-spacing: 1px; border-left: 4px solid var(--accent); padding-left: 10px; }
+  table { width: 100%; border-collapse: collapse; font-family: 'Share Tech Mono'; font-size: .85rem; margin-bottom: 14px; }
+  th { background: #111d33; color: var(--accent); padding: 10px; text-align: left; border: 1px solid var(--border); }
+  td { padding: 9px 10px; border: 1px solid var(--border); color: var(--text); }
+  tr:nth-child(even) td { background: #0c1424; }
+  .chip { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: .75rem; font-weight: bold; letter-spacing: 0.5px;}
+  .c-green { background: #00ff9d22; color: var(--green); border: 1px solid #00ff9d55; }
+  .c-red   { background: #ff475722; color: var(--red);   border: 1px solid #ff475755; }
+  .c-yellow{ background: #ffd60022; color: var(--yellow);border: 1px solid #ffd60055; }
+  .c-purple{ background: #b33dff22; color: #d68aff;border: 1px solid #b33dff55; }
+  .c-orange{ background: #ff8c0022; color: var(--orange);border: 1px solid #ff8c0055; }
+  .c-blue  { background: #00e5ff22; color: var(--accent);border: 1px solid #00e5ff55; }
+  .alert { background: #ff475711; border: 1px solid #ff475755; border-radius: 8px; padding: 12px 16px; margin: 15px 0; font-size: .85rem; color: #ff9ea7; line-height: 1.5; }
+  .alert strong { color: #ff4757; }
+  .success { background: #00ff9d0d; border: 1px solid #00ff9d44; border-radius: 8px; padding: 12px 16px; margin: 15px 0; font-size: .85rem; color: #9effd7; line-height: 1.5;}
+
+  /* ---- CODE ---- */
+  .code-block {
+    background: #03050a; border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; overflow-x: auto; margin-bottom: 16px;
+  }
+  pre { font-family: 'Share Tech Mono'; font-size: .8rem; line-height: 1.6; white-space: pre; }
+  .kw  { color: #7dd3fc; }
+  .fn  { color: #86efac; }
+  .cm  { color: #64748b; font-style: italic; }
+  .str { color: #fcd34d; }
+  .num { color: #f9a8d4; }
+  .pp  { color: #c084fc; }
+  .def { color: #fb923c; }
+  .code-label { font-family: 'Share Tech Mono'; font-size: .75rem; color: var(--dim); margin-bottom: 8px; letter-spacing: 1px; }
+  h3 { color: var(--green); font-size: 1rem; margin: 20px 0 10px; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<h1>⚡ BẢN CHUẨN KỸ SƯ V3.0 ⚡</h1>
+<p class="subtitle">An toàn tuyệt đối - Tránh Crash PSRAM - Diode OR Logic Gate</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="show('diagram')">📐 Sơ đồ mạch V3</div>
+  <div class="tab" onclick="show('table')">📋 Bảng đấu nối V3</div>
+  <div class="tab" onclick="show('code')">💻 Code V3 Hoàn Chỉnh</div>
+</div>
+
+<div id="diagram" class="section active">
+<div class="success"><strong>✅ Thiết kế Tối Ưu:</strong> Gộp 3 LED TX vào 1 Transistor (dư sức tải). Gộp 3 RX qua Diode Logic (tiết kiệm chân, chống nhiễu). Tránh xa hoàn toàn các chân cấm kỵ (0, 2, 4, 14, 15, 16). Bổ sung Tụ Hóa bắt buộc.</div>
+<div class="diagram-wrap">
+<svg viewBox="0 0 880 700" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:700px">
+<defs>
+  <filter id="glow">
+    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+<rect width="880" height="700" fill="#050810"/>
+
+<rect x="330" y="80" width="220" height="340" rx="10" fill="#0a101d" stroke="#1e3a5f" stroke-width="2"/>
+<rect x="330" y="80" width="220" height="30" rx="10" fill="#111d33"/>
+<text x="440" y="100" text-anchor="middle" fill="#00e5ff" font-size="14" font-weight="bold" filter="url(#glow)">ESP32-CAM (AI-Thinker)</text>
+
+<g fill="#4a6080" font-size="9.5" font-weight="bold">
+  <text x="340" y="135" fill="#ff4757">5V</text>
+  <text x="340" y="155" fill="#555">GND</text>
+  <text x="340" y="175" fill="#b33dff">GPIO 12 (TX OUT)</text>
+  <text x="340" y="195" fill="#00ff9d">GPIO 13 (PIR IN)</text>
+  <text x="340" y="215">GPIO 15 (Cấm - SD)</text>
+  <text x="340" y="235">GPIO 14 (Cấm - SD)</text>
+  <text x="340" y="255">GPIO 2 (Cấm - SD)</text>
+  <text x="340" y="275">GPIO 4 (Cấm - Flash)</text>
+</g>
+<g>
+  <circle cx="328" cy="131" r="4.5" fill="#ff4757"/> <circle cx="328" cy="151" r="4.5" fill="#555"/>    <circle cx="328" cy="171" r="4.5" fill="#b33dff"/> <circle cx="328" cy="191" r="4.5" fill="#00ff9d"/> <circle cx="328" cy="211" r="4.5" fill="#2a3a50"/>
+  <circle cx="328" cy="231" r="4.5" fill="#2a3a50"/>
+  <circle cx="328" cy="251" r="4.5" fill="#2a3a50"/>
+  <circle cx="328" cy="271" r="4.5" fill="#2a3a50"/>
+</g>
+
+<g fill="#4a6080" font-size="9.5" font-weight="bold">
+  <text x="450" y="135" fill="#ffd600">3.3V</text>
+  <text x="450" y="155" fill="#00e5ff">GPIO 3 (RX IN)</text>
+  <text x="450" y="175">GPIO 1 (TXD)</text>
+  <text x="450" y="195" fill="#555">GND</text>
+  <text x="450" y="215">GPIO 16 (Cấm - PSRAM)</text>
+  <text x="450" y="235">GPIO 0 (Cấm - Boot)</text>
+  <text x="450" y="255" fill="#555">GND</text>
+  <text x="450" y="275" fill="#ff4757">VCC (5V)</text>
+</g>
+<g>
+  <circle cx="552" cy="131" r="4.5" fill="#ffd600"/> <circle cx="552" cy="151" r="4.5" fill="#00e5ff"/> <circle cx="552" cy="171" r="4.5" fill="#2a3a50"/> <circle cx="552" cy="191" r="4.5" fill="#555"/>    <circle cx="552" cy="211" r="4.5" fill="#2a3a50"/> <circle cx="552" cy="231" r="4.5" fill="#2a3a50"/> <circle cx="552" cy="251" r="4.5" fill="#555"/>    <circle cx="552" cy="271" r="4.5" fill="#ff4757"/> </g>
+
+<rect x="360" y="320" width="160" height="38" rx="5" fill="#111d33" stroke="#00e5ff" stroke-width="1" stroke-dasharray="4,2"/>
+<text x="440" y="338" text-anchor="middle" fill="#00e5ff" font-size="9.5">💾 MicroSD 32GB (1-Bit)</text>
+<text x="440" y="352" text-anchor="middle" fill="#4a6080" font-size="8.5">An toàn tuyệt đối</text>
+<rect x="375" y="375" width="130" height="30" rx="5" fill="#0a2015" stroke="#00ff9d" stroke-width="1" stroke-dasharray="4,2"/>
+<text x="440" y="394" text-anchor="middle" fill="#00ff9d" font-size="9">📷 OV3660 Camera</text>
+
+<g transform="translate(300, 30)">
+  <rect x="0" y="0" width="40" height="25" rx="4" fill="#000" stroke="#00e5ff" stroke-width="1.5"/>
+  <rect x="0" y="0" width="10" height="25" fill="#ccc"/> <text x="5" y="16" fill="#000" font-size="12" font-weight="bold">-</text>
+  <text x="45" y="10" fill="#00e5ff" font-size="9" font-weight="bold">Tụ Hóa 470µF/10V+</text>
+  <text x="45" y="22" fill="#ff4757" font-size="8">Chống sụt áp / Treo mạch</text>
+  <line x1="20" y1="25" x2="20" y2="101" stroke="#ff4757" stroke-width="2"/> <line x1="5" y1="25" x2="5" y2="121" stroke="#555" stroke-width="2"/> </g>
+
+<rect x="60" y="80" width="150" height="105" rx="8" fill="#0a1a15" stroke="#00ff9d" stroke-width="1.8"/>
+<text x="135" y="100" text-anchor="middle" fill="#00ff9d" font-size="11" font-weight="bold">PIR AM312</text>
+<circle cx="72" cy="129" r="4" fill="#ffd600"/>
+<circle cx="72" cy="147" r="4" fill="#00ff9d"/>
+<circle cx="72" cy="165" r="4" fill="#555"/>
+<text x="82" y="133" fill="#ffd600" font-size="9">VCC → 3.3V/5V</text>
+<text x="82" y="151" fill="#ffd600" font-size="9">OUT → GPIO 13</text>
+<text x="82" y="169" fill="#ffd600" font-size="9">GND → GND</text>
+
+<polyline points="72,125 72,60 575,60 575,131 552,131" fill="none" stroke="#ffd600" stroke-width="1.5" stroke-dasharray="4,2"/>
+<polyline points="210,147 280,147 280,191 328,191" fill="none" stroke="#00ff9d" stroke-width="1.8"/>
+<polyline points="210,165 260,165 260,151 328,151" fill="none" stroke="#555" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+<rect x="50" y="220" width="230" height="230" rx="8" fill="#130a1d" stroke="#b33dff" stroke-width="1.8"/>
+<text x="165" y="240" text-anchor="middle" fill="#d68aff" font-size="11" font-weight="bold">Mạch Kích Tụ IR TX (Tối Ưu)</text>
+<text x="165" y="255" text-anchor="middle" fill="#8a60aa" font-size="8.5">1× NPN S8050 kéo // 3× LED IR</text>
+
+<g transform="translate(160, 310)">
+  <text x="-50" y="-35" fill="#ff4757" font-size="8" font-weight="bold">5V (Từ Adapter)</text>
+  <line x1="-50" y1="-30" x2="30" y2="-30" stroke="#ff4757" stroke-width="2"/>
+  
+  <line x1="-30" y1="-30" x2="-30" y2="-20" stroke="#ff4757" stroke-width="1.5"/>
+  <rect x="-34" y="-20" width="8" height="12" rx="1" fill="none" stroke="#ff8c00" stroke-width="1.2"/>
+  <text x="-38" y="-12" fill="#ff8c00" font-size="7" text-anchor="end">100Ω</text>
+  <polygon points="-35,0 -25,0 -30,6" fill="none" stroke="#ff8c00" stroke-width="1.5"/>
+  <line x1="-35" y1="6" x2="-25" y2="6" stroke="#ff8c00" stroke-width="1.5"/>
+  <line x1="-30" y1="-8" x2="-30" y2="0" stroke="#ff8c00" stroke-width="1.5"/>
+  <line x1="-30" y1="6" x2="-30" y2="20" stroke="#b33dff" stroke-width="1"/>
+
+  <line x1="0" y1="-30" x2="0" y2="-20" stroke="#ff4757" stroke-width="1.5"/>
+  <rect x="-4" y="-20" width="8" height="12" rx="1" fill="none" stroke="#ff8c00" stroke-width="1.2"/>
+  <text x="-8" y="-12" fill="#ff8c00" font-size="7" text-anchor="end">100Ω</text>
+  <polygon points="-5,0 5,0 0,6" fill="none" stroke="#ff8c00" stroke-width="1.5"/>
+  <line x1="-5" y1="6" x2="5" y2="6" stroke="#ff8c00" stroke-width="1.5"/>
+  <line x1="0" y1="-8" x2="0" y2="0" stroke="#ff8c00" stroke-width="1.5"/>
+  <line x1="0" y1="6" x2="0" y2="20" stroke="#b33dff" stroke-width="1"/>
+
+  <line x1="30" y1="-30" x2="30" y2="-20" stroke="#ff4757" stroke-width="1.5"/>
+  <rect x="26" y="-20" width="8" height="12" rx="1" fill="none" stroke="#ff8c00" stroke-width="1.2"/>
+  <text x="22" y="-12" fill="#ff8c00" font-size="7" text-anchor="end">100Ω</text>
+  <polygon points="25,0 35,0 30,6" fill="none" stroke="#ff8c00" stroke-width="1.5"/>
+  <line x1="25" y1="6" x2="35" y2="6" stroke="#ff8c00" stroke-width="1.5"/>
+  <line x1="30" y1="-8" x2="30" y2="0" stroke="#ff8c00" stroke-width="1.5"/>
+  <line x1="30" y1="6" x2="30" y2="20" stroke="#b33dff" stroke-width="1"/>
+
+  <line x1="-30" y1="20" x2="30" y2="20" stroke="#b33dff" stroke-width="1.5"/>
+  <line x1="0" y1="20" x2="0" y2="30" stroke="#b33dff" stroke-width="1.5"/>
+
+  <circle cx="0" cy="40" r="14" fill="none" stroke="#d68aff" stroke-width="1.5"/>
+  <line x1="8" y1="32" x2="8" y2="48" stroke="#d68aff" stroke-width="1.5"/>
+  <line x1="8" y1="40" x2="20" y2="40" stroke="#d68aff" stroke-width="1.5"/> <line x1="8" y1="35" x2="0" y2="30" stroke="#d68aff" stroke-width="1.5"/> <line x1="8" y1="45" x2="0" y2="50" stroke="#d68aff" stroke-width="1.5"/> <polygon points="0,50 0,46 5,49" fill="#d68aff"/>
+  
+  <text x="-20" y="44" fill="#d68aff" font-size="8.5" font-weight="bold" text-anchor="end">S8050</text>
+  
+  <line x1="0" y1="50" x2="0" y2="65" stroke="#555" stroke-width="1.5"/>
+  <text x="0" y="75" fill="#555" font-size="8" text-anchor="middle">GND CHUNG</text>
+
+  <rect x="20" y="36" width="24" height="8" rx="1" fill="none" stroke="#ffd600" stroke-width="1.2"/>
+  <text x="32" y="42" fill="#ffd600" font-size="7" text-anchor="middle">1kΩ</text>
+  <line x1="44" y1="40" x2="168" y2="40" stroke="#b33dff" stroke-width="1.5"/>
+  <text x="140" y="36" fill="#b33dff" font-size="8" font-weight="bold">GPIO 12</text>
+</g>
+
+<line x1="328" y1="171" x2="328" y2="350" stroke="#b33dff" stroke-width="1.5" stroke-dasharray="2,2"/>
+
+<rect x="580" y="100" width="250" height="260" rx="8" fill="#0a1520" stroke="#00e5ff" stroke-width="1.8"/>
+<text x="705" y="125" text-anchor="middle" fill="#00e5ff" font-size="11" font-weight="bold">Mạch Gom Tín Hiệu IR RX</text>
+<text x="705" y="140" text-anchor="middle" fill="#4a6080" font-size="8.5">Diode Logic "Wired-OR" (Active LOW)</text>
+
+<g transform="translate(590, 160)">
+  <rect x="0" y="0" width="45" height="25" fill="#112" stroke="#00e5ff" stroke-width="1"/>
+  <text x="22" y="16" text-anchor="middle" fill="#00e5ff" font-size="9" font-weight="bold">RX 1</text>
+  <line x1="45" y1="12" x2="65" y2="12" stroke="#00e5ff" stroke-width="1.5"/>
+  <polygon points="75,8 75,16 65,12" fill="none" stroke="#ff4757" stroke-width="1.5"/> <line x1="65" y1="8" x2="65" y2="16" stroke="#ff4757" stroke-width="1.5"/>
+  <line x1="75" y1="12" x2="95" y2="12" stroke="#00e5ff" stroke-width="1.5"/>
+  <text x="70" y="5" fill="#ff4757" font-size="7" text-anchor="middle">1N4148</text>
+</g>
+<g transform="translate(590, 205)">
+  <rect x="0" y="0" width="45" height="25" fill="#112" stroke="#00e5ff" stroke-width="1"/>
+  <text x="22" y="16" text-anchor="middle" fill="#00e5ff" font-size="9" font-weight="bold">RX 2</text>
+  <line x1="45" y1="12" x2="65" y2="12" stroke="#00e5ff" stroke-width="1.5"/>
+  <polygon points="75,8 75,16 65,12" fill="none" stroke="#ff4757" stroke-width="1.5"/>
+  <line x1="65" y1="8" x2="65" y2="16" stroke="#ff4757" stroke-width="1.5"/>
+  <line x1="75" y1="12" x2="95" y2="12" stroke="#00e5ff" stroke-width="1.5"/>
+</g>
+<g transform="translate(590, 250)">
+  <rect x="0" y="0" width="45" height="25" fill="#112" stroke="#00e5ff" stroke-width="1"/>
+  <text x="22" y="16" text-anchor="middle" fill="#00e5ff" font-size="9" font-weight="bold">RX 3</text>
+  <line x1="45" y1="12" x2="65" y2="12" stroke="#00e5ff" stroke-width="1.5"/>
+  <polygon points="75,8 75,16 65,12" fill="none" stroke="#ff4757" stroke-width="1.5"/>
+  <line x1="65" y1="8" x2="65" y2="16" stroke="#ff4757" stroke-width="1.5"/>
+  <line x1="75" y1="12" x2="95" y2="12" stroke="#00e5ff" stroke-width="1.5"/>
+</g>
+
+<line x1="685" y1="172" x2="685" y2="262" stroke="#00e5ff" stroke-width="1.5"/>
+<line x1="685" y1="217" x2="735" y2="217" stroke="#00e5ff" stroke-width="1.5"/>
+
+<rect x="735" y="185" width="10" height="20" fill="none" stroke="#ffd600" stroke-width="1.2"/>
+<text x="750" y="198" fill="#ffd600" font-size="8">Trở Kéo</text>
+<text x="750" y="208" fill="#ffd600" font-size="8">10kΩ</text>
+<line x1="740" y1="185" x2="740" y2="165" stroke="#ffd600" stroke-width="1.5"/>
+<text x="740" y="160" text-anchor="middle" fill="#ffd600" font-size="8">Lên 3.3V</text>
+
+<line x1="740" y1="205" x2="740" y2="217" stroke="#00e5ff" stroke-width="1.5"/>
+<line x1="740" y1="217" x2="780" y2="217" stroke="#00e5ff" stroke-width="1.5"/>
+<line x1="780" y1="217" x2="780" y2="151" stroke="#00e5ff" stroke-width="1.5"/>
+<line x1="780" y1="151" x2="552" y2="151" stroke="#00e5ff" stroke-width="1.5"/>
+<text x="775" y="212" text-anchor="end" fill="#00e5ff" font-size="8" font-weight="bold">Vào GPIO 3</text>
+
+<rect x="50" y="475" width="780" height="40" rx="6" fill="#0d1520" stroke="#ff4757" stroke-width="1.5"/>
+<text x="440" y="493" text-anchor="middle" fill="#ff4757" font-size="10" font-weight="bold">⚡ TRỤC NGUỒN (POWER BUS)</text>
+<text x="440" y="508" text-anchor="middle" fill="#ff8a95" font-size="8.5">Nguồn 5V 2A cấp trực tiếp cho ESP32 (Chân 5V) và cụm LED TX. Tất cả GND nối chung với nhau.</text>
+
+<rect x="50" y="530" width="780" height="95" rx="8" fill="#0a101d" stroke="#1e3a5f" stroke-width="1"/>
+<text x="440" y="550" text-anchor="middle" fill="#00e5ff" font-size="10" font-weight="bold">BẢNG DANH MỤC LINH KIỆN & GHI CHÚ</text>
+<text x="70"  y="575" fill="#ffd600" font-size="9">• 1× Transistor NPN S8050 (Điều khiển cả 3 LED TX)</text>
+<text x="70"  y="590" fill="#ffd600" font-size="9">• 1× Điện trở 1kΩ (Chân Base Transistor)</text>
+<text x="70"  y="605" fill="#ffd600" font-size="9">• 3× Điện trở 100Ω (Chân Collector bảo vệ LED IR)</text>
+<text x="420" y="575" fill="#00ff9d" font-size="9">• 3× Diode 1N4148 hoặc 1N4007 (Mạch Gom Tín Hiệu)</text>
+<text x="420" y="590" fill="#00ff9d" font-size="9">• 1× Điện trở 10kΩ (Kéo Pull-up chân báo động lên 3.3V)</text>
+<text x="420" y="605" fill="#ff4757" font-size="9" font-weight="bold">• 1× Tụ Hóa 470µF/10V+ (BẮT BUỘC: Cắm sát chân nguồn ESP32)</text>
+</svg>
+</div>
+</div>
+
+<div id="table" class="section table-section">
+
+<div class="alert"><strong>⚠️ Phân tích sự cố:</strong> Không dùng GPIO 16 (chết bộ nhớ PSRAM camera), không dùng GPIO 4 (sáng đèn flash trắng gây lộ camera), không dùng GPIO 0 (chạm cảm biến lúc cắm điện sẽ gây treo máy). Giải pháp V3 đã né toàn bộ các chân này!</div>
+
+<h2>1. PIR AM312 → Cảm biến thân nhiệt</h2>
+<table>
+  <tr><th>Chân module</th><th>Đấu đến ESP32-CAM</th><th>Ghi chú</th></tr>
+  <tr><td><span class="chip c-red">VCC</span></td><td><span class="chip c-yellow">3.3V</span> hoặc <span class="chip c-red">5V</span></td><td>Hoạt động ổn định ở cả 2 mức áp</td></tr>
+  <tr><td><span class="chip c-green">OUT</span></td><td><span class="chip c-green">GPIO 13</span></td><td>Tín hiệu báo động (Có người = HIGH)</td></tr>
+  <tr><td><span class="chip c-blue">GND</span></td><td><span class="chip c-blue">GND (Mass)</span></td><td>Nối chung với toàn mạch</td></tr>
+</table>
+
+<h2>2. Khối LED Phát (IR TX) - Dùng chung 1 Transistor</h2>
+<div class="success">💡 <strong>Mẹo Kỹ Sư:</strong> 3 bóng LED IR ăn khoảng 100mA. 1 con NPN S8050 chịu được tới 700mA. Không cần dùng 3 transistor phức tạp, chỉ cần nối song song 3 bóng LED (mỗi bóng nối 1 trở 100Ω riêng) vào chân C của 1 transistor là chạy hoàn hảo, lại tiết kiệm được 2 chân GPIO.</div>
+<table>
+  <tr><th>Kết nối tại Transistor</th><th>Đấu đến mạch</th><th>Chi tiết</th></tr>
+  <tr><td><span class="chip c-purple">Chân B (Base)</span></td><td><span class="chip c-purple">GPIO 12</span> (qua trở 1kΩ)</td><td>Bật/Tắt toàn bộ hệ thống nhìn đêm</td></tr>
+  <tr><td><span class="chip c-orange">Chân C (Collector)</span></td><td>Nối với 3 đầu Âm (Cathode) của LED</td><td>Mỗi LED có 1 trở 100Ω nối lên nguồn 5V</td></tr>
+  <tr><td><span class="chip c-blue">Chân E (Emitter)</span></td><td><span class="chip c-blue">GND chung</span></td><td>Đường xả dòng điện</td></tr>
+</table>
+
+<h2>3. Khối LED Thu (IR RX) - Mạch Diode "Wired-OR"</h2>
+<div class="success">💡 <strong>Diode Logic Gate:</strong> Cả 3 module nhận hồng ngoại được nối chụm vào 1 chân ESP32 thông qua 3 Diode. Đầu vạch đen (Cathode) hướng về phía mắt thu. Nếu BẤT CỨ mắt thu nào phát hiện xâm nhập (hạ xuống LOW), Diode sẽ mở và kéo GPIO 3 xuống mức LOW. Không bị chập mạch, cực kỳ an toàn!</div>
+<table>
+  <tr><th>Chân Module RX (Cả 3 cái)</th><th>Đấu đến mạch</th><th>Ghi chú</th></tr>
+  <tr><td><span class="chip c-red">VCC</span></td><td><span class="chip c-yellow">3.3V</span></td><td>Cấp nguồn</td></tr>
+  <tr><td><span class="chip c-blue">GND</span></td><td><span class="chip c-blue">GND chung</span></td><td>Mass chung</td></tr>
+  <tr><td><span class="chip c-blue">OUT (Tín hiệu)</span></td><td>Nối vào đầu <strong>Vạch Đen (Cathode)</strong> của Diode 1N4148</td><td>Đầu còn lại của 3 Diode chụm chung lại</td></tr>
+  <tr><td><strong>Điểm chụm 3 Diode</strong></td><td><span class="chip c-blue">GPIO 3 (RX IN)</span></td><td>Kéo 1 điện trở 10kΩ từ điểm này lên 3.3V</td></tr>
+</table>
+</div>
+
+<div id="code" class="section">
+
+<h3>📁 File: esp32cam_security_v3.ino</h3>
+<div class="code-label">// Code tinh gọn, chuẩn logic phần cứng V3, bỏ qua các chân rủi ro.</div>
+<div class="code-block"><pre>
+<span class="pp">#include</span> <span class="str">"esp_camera.h"</span>
+<span class="pp">#include</span> <span class="str">"SD_MMC.h"</span>
+<span class="pp">#include</span> <span class="str">"FS.h"</span>
+<span class="pp">#include</span> <span class="str">"time.h"</span>
+
+<span class="cm">// ============================================================
+//  PIN MAPPING - BẢN V3 (AN TOÀN TUYỆT ĐỐI)
+// ============================================================</span>
+<span class="pp">#define</span> <span class="def">PIR_PIN</span>     <span class="num">13</span>   <span class="cm">// Cảm biến thân nhiệt</span>
+<span class="pp">#define</span> <span class="def">IR_TX_PIN</span>   <span class="num">12</span>   <span class="cm">// Bật toàn bộ LED phát sáng ban đêm</span>
+<span class="pp">#define</span> <span class="def">IR_RX_PIN</span>    <span class="num">3</span>   <span class="cm">// Chân nhận tín hiệu chụm từ 3 cảm biến RX</span>
+
+<span class="cm">// Camera pins – AI-Thinker</span>
+<span class="pp">#define</span> <span class="def">PWDN_GPIO_NUM</span>  <span class="num">32</span>
+<span class="pp">#define</span> <span class="def">RESET_GPIO_NUM</span> <span class="num">-1</span>
+<span class="pp">#define</span> <span class="def">XCLK_GPIO_NUM</span>   <span class="num">0</span>
+<span class="pp">#define</span> <span class="def">SIOD_GPIO_NUM</span>  <span class="num">26</span>
+<span class="pp">#define</span> <span class="def">SIOC_GPIO_NUM</span>  <span class="num">27</span>
+<span class="pp">#define</span> <span class="def">Y9_GPIO_NUM</span>    <span class="num">35</span>
+<span class="pp">#define</span> <span class="def">Y8_GPIO_NUM</span>    <span class="num">34</span>
+<span class="pp">#define</span> <span class="def">Y7_GPIO_NUM</span>    <span class="num">39</span>
+<span class="pp">#define</span> <span class="def">Y6_GPIO_NUM</span>    <span class="num">36</span>
+<span class="pp">#define</span> <span class="def">Y5_GPIO_NUM</span>    <span class="num">21</span>
+<span class="pp">#define</span> <span class="def">Y4_GPIO_NUM</span>    <span class="num">19</span>
+<span class="pp">#define</span> <span class="def">Y3_GPIO_NUM</span>    <span class="num">18</span>
+<span class="pp">#define</span> <span class="def">Y2_GPIO_NUM</span>     <span class="num">5</span>
+<span class="pp">#define</span> <span class="def">VSYNC_GPIO_NUM</span> <span class="num">25</span>
+<span class="pp">#define</span> <span class="def">HREF_GPIO_NUM</span>  <span class="num">23</span>
+<span class="pp">#define</span> <span class="def">PCLK_GPIO_NUM</span>  <span class="num">22</span>
+
+<span class="cm">// ============================================================
+//  CONFIG
+// ============================================================</span>
+<span class="pp">#define</span> <span class="def">RECORD_SECONDS</span>    <span class="num">15</span>   <span class="cm">// giây quay mỗi lần</span>
+<span class="pp">#define</span> <span class="def">COOLDOWN_MS</span>     <span class="num">5000</span>   <span class="cm">// ms nghỉ để thẻ nhớ xả đệm</span>
+<span class="pp">#define</span> <span class="def">NIGHT_HOUR_START</span>  <span class="num">18</span>   <span class="cm">// giờ bật hồng ngoại (18:00)</span>
+<span class="pp">#define</span> <span class="def">NIGHT_HOUR_END</span>     <span class="num">6</span>   <span class="cm">// giờ tắt hồng ngoại (6:00)</span>
+
+<span class="kw">unsigned long</span> lastTriggerMs = <span class="num">0</span>;
+<span class="kw">int</span> fileIndex = <span class="num">0</span>;
+
+<span class="cm">// ============================================================
+//  FUNCTIONS
+// ============================================================</span>
+<span class="kw">bool</span> <span class="fn">initCamera</span>() {
+  camera_config_t cfg;
+  cfg.ledc_channel = LEDC_CHANNEL_0;
+  cfg.ledc_timer   = LEDC_TIMER_0;
+  cfg.pin_d0       = Y2_GPIO_NUM;
+  cfg.pin_d1       = Y3_GPIO_NUM;
+  cfg.pin_d2       = Y4_GPIO_NUM;
+  cfg.pin_d3       = Y5_GPIO_NUM;
+  cfg.pin_d4       = Y6_GPIO_NUM;
+  cfg.pin_d5       = Y7_GPIO_NUM;
+  cfg.pin_d6       = Y8_GPIO_NUM;
+  cfg.pin_d7       = Y9_GPIO_NUM;
+  cfg.pin_xclk     = XCLK_GPIO_NUM;
+  cfg.pin_pclk     = PCLK_GPIO_NUM;
+  cfg.pin_vsync    = VSYNC_GPIO_NUM;
+  cfg.pin_href     = HREF_GPIO_NUM;
+  cfg.pin_sscb_sda = SIOD_GPIO_NUM;
+  cfg.pin_sscb_scl = SIOC_GPIO_NUM;
+  cfg.pin_pwdn     = PWDN_GPIO_NUM;
+  cfg.pin_reset    = RESET_GPIO_NUM;
+  cfg.xclk_freq_hz = <span class="num">20000000</span>;
+  cfg.pixel_format = PIXFORMAT_JPEG;
+  cfg.frame_size   = FRAMESIZE_VGA;  
+  cfg.jpeg_quality = <span class="num">12</span>;             
+  cfg.fb_count     = <span class="num">2</span>;              <span class="cm">// Cần có PSRAM để dùng 2 frame</span>
+  cfg.grab_mode    = CAMERA_GRAB_LATEST;
+
+  <span class="kw">if</span> (<span class="fn">esp_camera_init</span>(&cfg) != ESP_OK) <span class="kw">return false</span>;
+  
+  sensor_t *s = <span class="fn">esp_camera_sensor_get</span>();
+  s-><span class="fn">set_brightness</span>(s, <span class="num">1</span>);
+  s-><span class="fn">set_saturation</span>(s, -<span class="num">1</span>);
+  <span class="kw">return true</span>;
+}
+
+<span class="kw">void</span> <span class="fn">setNightVision</span>(<span class="kw">bool</span> enable) {
+  <span class="fn">digitalWrite</span>(IR_TX_PIN, enable ? HIGH : LOW);
+  sensor_t *s = <span class="fn">esp_camera_sensor_get</span>();
+  <span class="kw">if</span> (enable) {
+    s-><span class="fn">set_special_effect</span>(s, <span class="num">2</span>); <span class="cm">// Chế độ đen trắng chống nhiễu</span>
+    s-><span class="fn">set_agc_gain</span>(s, <span class="num">8</span>);       <span class="cm">// Tăng sáng nhạy cảm</span>
+  } <span class="kw">else</span> {
+    s-><span class="fn">set_special_effect</span>(s, <span class="num">0</span>); <span class="cm">// Trở lại có màu</span>
+    s-><span class="fn">set_agc_gain</span>(s, <span class="num">0</span>);
+  }
+}
+
+<span class="kw">void</span> <span class="fn">recordVideo</span>(<span class="kw">int</span> seconds) {
+  <span class="kw">char</span> path[<span class="num">32</span>];
+  <span class="fn">sprintf</span>(path, <span class="str">"/vid_%04d.mjpeg"</span>, fileIndex++);
+  File f = SD_MMC.<span class="fn">open</span>(path, FILE_WRITE);
+  <span class="kw">if</span> (!f) <span class="kw">return</span>;
+  
+  <span class="kw">unsigned long</span> endMs = <span class="fn">millis</span>() + (<span class="kw">unsigned long</span>)seconds * <span class="num">1000</span>;
+  <span class="kw">while</span> (<span class="fn">millis</span>() < endMs) {
+    camera_fb_t *fb = <span class="fn">esp_camera_fb_get</span>();
+    <span class="kw">if</span> (!fb) <span class="kw">continue</span>;
+    <span class="kw">uint32_t</span> len = fb->len;
+    f.<span class="fn">write</span>((<span class="kw">uint8_t</span>*)&len, <span class="num">4</span>);
+    f.<span class="fn">write</span>(fb->buf, fb->len);
+    <span class="fn">esp_camera_fb_return</span>(fb);
+  }
+  f.<span class="fn">close</span>();
+}
+
+<span class="kw">bool</span> <span class="fn">isNightTime</span>() {
+  <span class="kw">struct</span> tm ti;
+  <span class="kw">if</span> (!<span class="fn">getLocalTime</span>(&ti)) <span class="kw">return true</span>; <span class="cm">// Mặc định là đêm nếu mất giờ</span>
+  <span class="kw">int</span> h = ti.tm_hour;
+  <span class="kw">return</span> (h >= NIGHT_HOUR_START || h < NIGHT_HOUR_END);
+}
+
+<span class="cm">// ============================================================
+//  MAIN LOOP
+// ============================================================</span>
+<span class="kw">void</span> <span class="fn">setup</span>() {
+  Serial.<span class="fn">begin</span>(<span class="num">115200</span>);
+  <span class="fn">delay</span>(<span class="num">1000</span>);
+
+  <span class="cm">// Cấu hình chân</span>
+  <span class="fn">pinMode</span>(PIR_PIN, INPUT);
+  <span class="fn">pinMode</span>(IR_RX_PIN, INPUT); <span class="cm">// Pull-up 10k đã lắp bằng phần cứng ngoài</span>
+  <span class="fn">pinMode</span>(IR_TX_PIN, OUTPUT);
+  <span class="fn">setNightVision</span>(<span class="kw">false</span>);
+
+  <span class="kw">if</span> (!<span class="fn">initCamera</span>()) {
+    Serial.<span class="fn">println</span>(<span class="str">"Camera Lỗi! Ktra PSRAM / Dây cắm"</span>);
+    <span class="kw">while</span>(<span class="num">1</span>);
+  }
+
+  <span class="kw">if</span> (!SD_MMC.<span class="fn">begin</span>(<span class="str">"/sdcard"</span>, <span class="kw">true</span>)) { 
+    Serial.<span class="fn">println</span>(<span class="str">"Lỗi Thẻ Nhớ!"</span>);
+  } <span class="kw">else</span> {
+    Serial.<span class="fn">println</span>(<span class="str">"Thẻ Nhớ OK"</span>);
+  }
+}
+
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="kw">bool</span> motion_detected = <span class="fn">digitalRead</span>(PIR_PIN);       
+  <span class="kw">bool</span> beam_broken     = !<span class="fn">digitalRead</span>(IR_RX_PIN); <span class="cm">// LOW tức là có ngắt tia do Diode Logic</span>
+
+  <span class="kw">if</span> ((motion_detected || beam_broken) && (<span class="fn">millis</span>() - lastTriggerMs > COOLDOWN_MS)) {
+    lastTriggerMs = <span class="fn">millis</span>();
+    
+    <span class="kw">if</span> (<span class="fn">isNightTime</span>()) <span class="fn">setNightVision</span>(<span class="kw">true</span>);
+    <span class="fn">delay</span>(<span class="num">200</span>); <span class="cm">// Đợi cảm biến ảnh cân bằng sáng</span>
+
+    <span class="fn">recordVideo</span>(RECORD_SECONDS);
+    
+    <span class="fn">setNightVision</span>(<span class="kw">false</span>); <span class="cm">// Quay xong tắt đèn tiết kiệm điện</span>
+  }
+  <span class="fn">delay</span>(<span class="num">100</span>);
+}
+</pre></div>
+<div class="alert">✅ <strong>Tip Mạch V3:</strong> Bạn sẽ thấy code bây giờ cực kỳ "sạch" và gọn do mọi rủi ro chập cháy hoặc kẹt tín hiệu đã được mạch Diode phần cứng giải quyết triệt để ở bên ngoài!</div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
